@@ -1,4 +1,4 @@
-(ns sophistone.twalk)
+(ns twalk.twalk)
 
 ;; Twalk is a general-purpose tree visitor.
 ;; Its important propety is constant-stack-space consumption.

@@ -1,11 +1,11 @@
-# sophistone.twalk
+# twalk
 
 This module provides a generic depth-first tree visitor function in Clojure.
 It utilizes trampoline to handle trees of any size with constant satck space consumption.
 
 ## Usage
 
-    (require sophistone.twalk :refer [twalk])
+    (require twalk.twalk :refer [twalk])
 	(let [ctx ...
 	      tree ...
 	      [ctx' tree'] (twalk ctx tree)]

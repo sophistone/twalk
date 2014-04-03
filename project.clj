@@ -1,4 +1,4 @@
-(defproject sophistone.twalk "0.1.0-SNAPSHOT"
+(defproject twalk "0.1.0-SNAPSHOT"
   :description "FIXME: write description"
   :url "http://github.com/sophistone/twalk"
   :license {:name "MIT License"

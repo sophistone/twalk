@@ -1,6 +1,6 @@
-(ns sophistone.twalk-test
+(ns twalk.twalk-test
   (:require [clojure.test :refer :all]
-            [sophistone.twalk :refer :all]))
+            [twalk.twalk :refer :all]))
 
 (def ^:const sample-tree
   ;; a -+- b -+- c
