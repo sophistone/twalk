@@ -5,11 +5,22 @@ It utilizes trampoline to handle trees of any size with constant satck space con
 
 ## Usage
 
-    (require twalk.twalk :refer [twalk])
-	(let [ctx ...
-	      tree ...
-	      [ctx' tree'] (twalk ctx tree)]
-	  ...)
+In project.clj:
+
+    (defproject myproject
+     ...
+     :dependencies [[twalk "0.1.0-SNAPSHOT"]
+                    ...])
+					
+In your code:
+
+    (ns your.module
+     (:require [twalk.twalk :refer [twalk]]))
+    
+    (let [ctx ...
+          tree ...
+          [ctx' tree'] (twalk ctx tree)]
+      ...)
 
 Twalk performs a depth-first tree taversal.
 Given a set of functions, it can treat any data structure as a tree.
