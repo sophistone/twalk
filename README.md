@@ -9,7 +9,7 @@ In project.clj:
 
     (defproject myproject
      ...
-     :dependencies [[twalk "0.1.0-SNAPSHOT"]
+     :dependencies [[twalk "0.1.0"]
                     ...])
 					
 In your code:
