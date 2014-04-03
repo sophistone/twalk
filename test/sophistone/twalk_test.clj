@@ -112,3 +112,18 @@
 
       (is (= 5 (:count ctx')))
       (is (= expected-tree tree')))))
+
+(deftest twalk-no-stack-overflow-test
+  (testing "Traversal over a very deep tree can be done without stack overflow"
+    (let [ctx {:branch? next,
+               :children #(list (rest %)),
+               :make-node #(cons (first %1) (first %2)),
+
+               :pre (fn [ctx node]
+                      [(update-in ctx [:sum] #(+ % (first node))),
+                       node]),
+               :post list,
+               :sum 0}]
+
+      (is (= 4999950000
+             (twalk ctx (take 100000 (iterate inc 0)) #(-> % first :sum)))))))
