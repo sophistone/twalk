@@ -1,10 +1,44 @@
-(ns twalk.twalk)
+(ns twalk.twalk
+  (:require [clojure.set :as set]))
 
 ;; Twalk is a general-purpose tree visitor.
 ;; Its important propety is constant-stack-space consumption.
 ;; It can process on trees of any size without stack overflow.
 
 (declare twalk-1)
+
+(defn- has-push? [ctx]
+  (contains? ctx ::push))
+
+(defn- keyset [m]
+  (set (keys m)))
+
+(defn- keys-intersection "Returns keys which both of m1 and m2 have." [m1 m2]
+  (set/intersection (keyset m1) (keyset m2)))
+
+(defn- keys-difference "Returns keys which m1 has but m2 doesn't." [m1 m2]
+  (set/difference (keyset m1) (keyset m2)))
+
+(defn push "Returns ctx merged with change.
+This change is automatically reverted before execution of :post function
+on the current node."
+ [ctx change]
+  {:pre [(not (has-push? ctx))]
+   :post [(has-push? %)]}
+  (let [modified-keys (keys-intersection ctx change)
+        temp-added-keys (keys-difference change ctx)
+        saved (select-keys ctx modified-keys)
+        push-data {:saved-entries saved,
+                   :temp-added-keys temp-added-keys}]
+
+    (-> ctx
+        (merge change)
+        (assoc ::push push-data))))
+
+(defn- pop-ctx [ctx push-data]
+  (let [temp-added-keys (:temp-added-keys push-data)
+        saved  (:saved-entries push-data)]
+    (apply dissoc (merge ctx saved) temp-added-keys)))
 
 (defn- twalk-list [ctx nodes k]
   (if (empty? nodes)
@@ -16,7 +50,7 @@
                                    (fn [ctx xs]
                                      (fn [] (k ctx (cons x xs))))))))))
 
-(defn- twalk-dig [ctx node k]
+(defn- twalk-dig-1 [ctx node k]
   (if-let [children (and ((:branch? ctx) node)
                          (seq ((:children ctx) node)))]
 
@@ -25,6 +59,17 @@
                   #(k ctx ((:make-node ctx) node children))))
 
     (k ctx node)))
+
+(defn- twalk-dig-with-push [ctx node k]
+  (let [push-data (::push ctx)
+        ctx (dissoc ctx ::push)
+        k' (fn [ctx node] #(k (pop-ctx ctx push-data) node))]
+    (twalk-dig-1 ctx node k')))
+
+(defn- twalk-dig [ctx node k]
+  (if (has-push? ctx)
+    (twalk-dig-with-push ctx node k)
+    (twalk-dig-1 ctx node k)))
 
 (defn- twalk-1 [ctx node k]
   (let [[ctx node] ((:pre ctx) ctx node)]

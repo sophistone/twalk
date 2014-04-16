@@ -127,3 +127,37 @@
 
       (is (= 4999950000
              (twalk ctx (take 100000 (iterate inc 0)) #(-> % first :sum)))))))
+
+(deftest twalk-push-test
+  (testing "Process a subtree with ctx changed"
+    ;; On descendant of node b, replace their names with upcased one.
+    ;; An entry :under-b is added on them, too.
+    (let [upcase (fn [^String s] (.toUpperCase s))
+
+          update-node-name (fn [f node] (update-in node [:name] f))
+
+          ctx (assoc ctx-base
+                :transform-name identity,
+                :pre (fn [ctx node]
+                       (let [ctx
+                             (if (= "b" (:name node))
+                               (push ctx {:transform-name upcase,
+                                          :under-b true})
+                               ctx)]
+                         [ctx node])),
+                :post (fn [ctx node]
+                        [ctx
+                         (-> (update-node-name (:transform-name ctx) node)
+                             (merge (select-keys ctx [:under-b]))
+                             (assoc :processed true))]))
+
+          expected-tree   (let [c {:name "C", :processed true, :under-b true},
+                                d {:name "D", :processed true, :under-b true},
+                                e {:name "e", :processed true},
+                                b {:name "b", :elements [c d], :processed true},
+                                a {:name "a", :elements [b e], :processed true}]
+                            a)
+          
+          [ctx' tree'] (twalk ctx sample-tree)]
+
+      (is (= expected-tree tree')))))
