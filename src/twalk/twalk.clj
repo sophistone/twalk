@@ -50,7 +50,7 @@ on the current node."
                                    (fn [ctx xs]
                                      (fn [] (k ctx (cons x xs))))))))))
 
-(defn- twalk-dig-1 [ctx node k]
+(defn- twalk-dig [ctx node k]
   (if-let [children (and ((:branch? ctx) node)
                          (seq ((:children ctx) node)))]
 
@@ -60,22 +60,27 @@ on the current node."
 
     (k ctx node)))
 
-(defn- twalk-dig-with-push [ctx node k]
-  (let [push-data (::push ctx)
-        ctx (dissoc ctx ::push)
-        k' (fn [ctx node] #(k (pop-ctx ctx push-data) node))]
-    (twalk-dig-1 ctx node k')))
-
-(defn- twalk-dig [ctx node k]
-  (if (has-push? ctx)
-    (twalk-dig-with-push ctx node k)
-    (twalk-dig-1 ctx node k)))
-
 (defn- twalk-1 [ctx node k]
   (let [[ctx node] ((:pre ctx) ctx node)]
-    (twalk-dig ctx node
-               (fn [ctx node]
-                 #(k ((:post ctx) ctx node))))))
+    (if (has-push? ctx)
+      (let [push-data (::push ctx)
+            pop-before-post? true
+            pop (fn [ctx] (pop-ctx ctx push-data))
+            ctx (dissoc ctx ::push)]
+
+        (if pop-before-post?
+          (twalk-dig ctx node
+                     (fn [ctx node]
+                       #(k ((:post ctx) (pop ctx) node))))
+
+          (twalk-dig ctx node
+                     (fn [ctx node]
+                       (let [[ctx node] ((:post ctx) ctx node)]
+                         #(k [(pop ctx) node]))))))
+
+      (twalk-dig ctx node
+                 (fn [ctx node]
+                   #(k ((:post ctx) ctx node)))))))
 
 (defn twalk "Iterates over a tree.
 You can use this function to manipulate nodes and/or 
