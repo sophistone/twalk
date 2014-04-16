@@ -15,7 +15,7 @@ In project.clj:
 In your code:
 
     (ns your.module
-     (:require [twalk.twalk :refer [twalk]]))
+     (:require [twalk.twalk :as twalk :refer [twalk]]))
     
     (let [ctx ...
           tree ...
@@ -48,6 +48,19 @@ You have to define several functions in a context as follows:
 Twalk applies `:pre` function on each node in pre-order, and `:post` function in post-order.
 
 If the operation will not change a tree at all, `:make-node` can simply return the given node instead of replicating it. i.e., `(fn [node _] node)` is enough in such cases.
+
+### Process subtree with temporalily changed context
+
+You can change context only on children and descendants of a certan node.
+
+If you change ctx in :pre function with `(twalk/push ctx limited-change)`
+on a certain node, its children and descendants will be processed with
+the changed ctx, but the change is reverted before applying :post function
+on the node.
+
+On reversion, entries in ctx which were changed by the push are restored
+and ones added by the push are removed.  Other entries modified in
+its children or descendants remain.
 
 ## Examples
 
@@ -140,6 +153,32 @@ the inserted node is also to be visited.
 					             {:name "d", :number 3}
 					             {:name "f", :number 4})}
 					 {:name "e", :number 5})}
+
+### Example 6. Upcase name of nodes under a certain node
+
+    (let [upcase (fn [^String s] (.toUpperCase s))
+
+          update-node-name
+          (fn [ctx node] (update-in node [:name] (:transform-name ctx)))
+
+          ctx (assoc ctx-base
+                :transform-name identity,
+                :pre (fn [ctx node]
+                       (let [ctx
+                             (if (= "b" (:name node))
+                               (twalk/push ctx {:transform-name upcase})
+                               ctx)]
+                         [ctx node])),
+                :post (fn [ctx node]
+                        [ctx (update-node-name ctx node)]))
+
+          [ctx' tree'] (twalk ctx sample-tree)]
+      tree')
+    ===> {:name "a",
+	      :elements ({:name "b",
+		              :elements ({:name "C"}
+					             {:name "D"})}
+					 {:name "e"})}
 
 ## License
 
