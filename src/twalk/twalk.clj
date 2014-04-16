@@ -1,10 +1,52 @@
-(ns twalk.twalk)
+(ns twalk.twalk
+  (:require [clojure.set :as set]))
 
 ;; Twalk is a general-purpose tree visitor.
 ;; Its important propety is constant-stack-space consumption.
 ;; It can process on trees of any size without stack overflow.
 
 (declare twalk-1)
+
+(defn- has-push? [ctx]
+  (contains? ctx ::push))
+
+(defn- keyset [m]
+  (set (keys m)))
+
+(defn- keys-intersection "Returns keys which both of m1 and m2 have." [m1 m2]
+  (set/intersection (keyset m1) (keyset m2)))
+
+(defn- keys-difference "Returns keys which m1 has but m2 doesn't." [m1 m2]
+  (set/difference (keyset m1) (keyset m2)))
+
+(defn push "Returns ctx merged with change.
+This change is automatically reverted before execution of :post function
+on the current node."
+ [ctx change]
+  {:pre [(not (has-push? ctx))]
+   :post [(has-push? %)]}
+  (let [modified-keys (keys-intersection ctx change)
+        temp-added-keys (keys-difference change ctx)
+        saved (select-keys ctx modified-keys)
+        push-data {:saved-entries saved,
+                   :temp-added-keys temp-added-keys,
+                   :pop-before-post true}]
+
+    (-> ctx
+        (merge change)
+        (assoc ::push push-data))))
+
+(defn push*  "Returns ctx merged with change.
+This change is automatically reverted after execution of :post function
+on the current node."
+  [ctx change]
+  (-> (push ctx change)
+      (update-in [::push] #(assoc % :pop-before-post false))))
+
+(defn- pop-ctx [ctx push-data]
+  (let [temp-added-keys (:temp-added-keys push-data)
+        saved  (:saved-entries push-data)]
+    (apply dissoc (merge ctx saved) temp-added-keys)))
 
 (defn- twalk-list [ctx nodes k]
   (if (empty? nodes)
@@ -28,9 +70,25 @@
 
 (defn- twalk-1 [ctx node k]
   (let [[ctx node] ((:pre ctx) ctx node)]
-    (twalk-dig ctx node
-               (fn [ctx node]
-                 #(k ((:post ctx) ctx node))))))
+    (if (has-push? ctx)
+      (let [push-data (::push ctx)
+            pop-before-post? (:pop-before-post push-data)
+            pop (fn [ctx] (pop-ctx ctx push-data))
+            ctx (dissoc ctx ::push)]
+
+        (if pop-before-post?
+          (twalk-dig ctx node
+                     (fn [ctx node]
+                       #(k ((:post ctx) (pop ctx) node))))
+
+          (twalk-dig ctx node
+                     (fn [ctx node]
+                       (let [[ctx node] ((:post ctx) ctx node)]
+                         #(k [(pop ctx) node]))))))
+
+      (twalk-dig ctx node
+                 (fn [ctx node]
+                   #(k ((:post ctx) ctx node)))))))
 
 (defn twalk "Iterates over a tree.
 You can use this function to manipulate nodes and/or 

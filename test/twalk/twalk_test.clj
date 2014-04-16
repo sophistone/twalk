@@ -57,7 +57,7 @@
       (is (= ["a","b","c","d","e"] (:names ctx')))
       (is (= tree' sample-tree))
       (is (identical? tree' sample-tree)))))
-                
+
 (deftest twalk-postorder-nochange-test
   (testing "List the names of the nodes in postorder."
     (let [ctx (assoc nochange-ctx-base
@@ -127,3 +127,60 @@
 
       (is (= 4999950000
              (twalk ctx (take 100000 (iterate inc 0)) #(-> % first :sum)))))))
+
+(defn- upcase [^String s] (.toUpperCase s))
+(defn- update-node-name [f node] (update-in node [:name] f))
+
+(deftest push-test
+  (testing "Process children and descendants with ctx changed"
+    ;; On descendant of node b, replace their names with upcased one.
+    ;; An entry :under-b is added on them, too.
+    (let [ctx (assoc ctx-base
+                :transform-name identity,
+                :pre (fn [ctx node]
+                       (let [ctx
+                             (if (= "b" (:name node))
+                               (push ctx {:transform-name upcase,
+                                          :under-b true})
+                               ctx)]
+                         [ctx node])),
+                :post (fn [ctx node]
+                        [ctx
+                         (-> (update-node-name (:transform-name ctx) node)
+                             (merge (select-keys ctx [:under-b]))
+                             (assoc :processed true))]))
+
+          expected-tree   (let [c {:name "C", :processed true, :under-b true},
+                                d {:name "D", :processed true, :under-b true},
+                                e {:name "e", :processed true},
+                                b {:name "b", :elements [c d], :processed true},
+                                a {:name "a", :elements [b e], :processed true}]
+                            a)
+
+          [ctx' tree'] (twalk ctx sample-tree)]
+
+      (is (= expected-tree tree')))))
+
+(deftest push*-test
+  (testing "Process a subtree with ctx changed"
+    (let [ctx (assoc ctx-base
+                :transform-name identity,
+                :pre (fn [ctx node]
+                       (let [ctx
+                             (if (= "b" (:name node))
+                               (push* ctx {:transform-name upcase})
+                               ctx)]
+                         [ctx node])),
+                :post (fn [ctx node]
+                        [ctx (update-node-name (:transform-name ctx) node)]))
+
+          expected-tree   (let [c {:name "C"},
+                                d {:name "D"},
+                                e {:name "e"},
+                                b {:name "B", :elements [c d]},
+                                a {:name "a", :elements [b e]}]
+                            a)
+
+          [ctx' tree'] (twalk ctx sample-tree)]
+
+      (is (= expected-tree tree')))))
