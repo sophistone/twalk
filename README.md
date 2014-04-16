@@ -53,14 +53,17 @@ If the operation will not change a tree at all, `:make-node` can simply return t
 
 You can change context only on children and descendants of a certan node.
 
-If you change ctx in :pre function with `(twalk/push ctx limited-change)`
+If you change ctx in `:pre` function with `(twalk/push ctx limited-change)`
 on a certain node, its children and descendants will be processed with
-the changed ctx, but the change is reverted before applying :post function
+the changed ctx, but the change is reverted before applying `:post` function
 on the node.
 
 On reversion, entries in ctx which were changed by the push are restored
 and ones added by the push are removed.  Other entries modified in
 its children or descendants remain.
+
+If you use `push*` instead of `push`, the reversion is done **after**
+applying `:post` function on the node.
 
 ## Examples
 

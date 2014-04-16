@@ -29,11 +29,19 @@ on the current node."
         temp-added-keys (keys-difference change ctx)
         saved (select-keys ctx modified-keys)
         push-data {:saved-entries saved,
-                   :temp-added-keys temp-added-keys}]
+                   :temp-added-keys temp-added-keys,
+                   :pop-before-post true}]
 
     (-> ctx
         (merge change)
         (assoc ::push push-data))))
+
+(defn push*  "Returns ctx merged with change.
+This change is automatically reverted after execution of :post function
+on the current node."
+  [ctx change]
+  (-> (push ctx change)
+      (update-in [::push] #(assoc % :pop-before-post false))))
 
 (defn- pop-ctx [ctx push-data]
   (let [temp-added-keys (:temp-added-keys push-data)
@@ -64,7 +72,7 @@ on the current node."
   (let [[ctx node] ((:pre ctx) ctx node)]
     (if (has-push? ctx)
       (let [push-data (::push ctx)
-            pop-before-post? true
+            pop-before-post? (:pop-before-post push-data)
             pop (fn [ctx] (pop-ctx ctx push-data))
             ctx (dissoc ctx ::push)]
 
