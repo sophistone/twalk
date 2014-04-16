@@ -1,4 +1,4 @@
-(defproject twalk "0.1.0-SNAPSHOT"
+(defproject twalk "0.2.0-SNAPSHOT"
   :description "A generic tree visitor for trees of any size"
   :url "http://github.com/sophistone/twalk"
   :license {:name "MIT License"
