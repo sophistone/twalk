@@ -155,29 +155,29 @@ and returns its result instead."
 ;;     * Unthunkify applications of continuation from twalk* functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(declare walk)
+;; (declare walk)
 
-(defn- walk-list [ctx nodes]
-  (if (empty? nodes)
-    [ctx ()]
-    (let [[ctx x] (walk ctx (first nodes))
-          [ctx xs] (walk-list ctx (rest nodes))]
-      [ctx (cons x xs)])))
+;; (defn- walk-list [ctx nodes]
+;;   (if (empty? nodes)
+;;     [ctx ()]
+;;     (let [[ctx x] (walk ctx (first nodes))
+;;           [ctx xs] (walk-list ctx (rest nodes))]
+;;       [ctx (cons x xs)])))
 
-(defn- walk-dig [ctx node]
-  (if-let [children (and ((:branch? ctx) node)
-                         (seq ((:children ctx) node)))]
+;; (defn- walk-dig [ctx node]
+;;   (if-let [children (and ((:branch? ctx) node)
+;;                          (seq ((:children ctx) node)))]
 
-    (let [[ctx children] (walk-list ctx children)]
-      [ctx ((:make-node ctx) node children)])
+;;     (let [[ctx children] (walk-list ctx children)]
+;;       [ctx ((:make-node ctx) node children)])
 
-    [ctx node]))
+;;     [ctx node]))
 
-(defn walk "a naïve version of twalk."
-  ([ctx node]
-     (let [[ctx node] ((:pre ctx) ctx node)
-           [ctx node] (walk-dig ctx node)
-           [ctx node] ((:post ctx) ctx node)]
-       [ctx node]))
-  ([ctx node k]
-     (k (walk ctx node))))
+;; (defn walk "a naïve version of twalk."
+;;   ([ctx node]
+;;      (let [[ctx node] ((:pre ctx) ctx node)
+;;            [ctx node] (walk-dig ctx node)
+;;            [ctx node] ((:post ctx) ctx node)]
+;;        [ctx node]))
+;;   ([ctx node k]
+;;      (k (walk ctx node))))
