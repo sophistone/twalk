@@ -249,3 +249,18 @@
                 :post nil)
           [ctx' tree'] (twalk ctx sample-tree)]
       (is (= 5 (:n ctx'))))))
+
+(deftest return-ctx-test
+  (let [ctx (assoc ctx-base
+              :n 0
+              :post (fn [ctx node] [(update-in ctx [:n] inc) node]))]
+    (is (= (assoc ctx :n 5)
+           (twalk ctx sample-tree return-ctx)))))
+
+(deftest return-node-test
+  (let [ctx (assoc ctx-base
+              :n 0
+              :post (fn [ctx node] [(update-in ctx [:n] inc) node]))]
+    (is (= sample-tree
+           (twalk ctx sample-tree return-node)))))
+
