@@ -65,6 +65,15 @@ its children or descendants remain.
 If you use `push*` instead of `push`, the reversion is done **after**
 applying `:post` function on the node.
 
+### Skip processing nodes under a certain node
+
+You can skip applying pre and post functions to nodes under a certain node.
+To do it, you can call `(twalk/skip ctx)` in pre function on the node.
+
+You can also use `skip*` and `skip-post` functions.
+`skip-post` skips applying post function on the node.
+`skip*` has effects of both of `skip` and `skip-post`.
+
 ## Examples
 
 In the following examples, we use sample-tree defined as follows:
@@ -182,6 +191,21 @@ the inserted node is also to be visited.
 		              :elements ({:name "C"}
 					             {:name "D"})}
 					 {:name "e"})}
+
+### Example 7. Skip nodes under a certain node
+
+    (let [ctx (assoc ctx-base
+                :log [],
+                :pre (fn [ctx node]
+                       (if (= "b" (:name node)) 
+                         [(twalk/skip ctx) node]
+                         [ctx node]))
+                :post (fn [ctx node]
+                        [(update-in ctx [:log] #(conj % (:name node)))
+                         node]))
+          [ctx' tree'] (twalk ctx sample-tree)]
+      (:log ctx'))
+    ===> ["b" "e" "a"]
 
 ## License
 
