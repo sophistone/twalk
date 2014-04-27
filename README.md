@@ -74,6 +74,22 @@ You can also use `skip*` and `skip-post` functions.
 `skip-post` skips applying post function on the node.
 `skip*` has effects of both of `skip` and `skip-post`.
 
+### Extract context or tree from result
+
+You can give a function which will be applied to the result of
+twalk as the third argument to twalk.
+
+Suppose that [ctx' tree'] is the result of twalk called with two arguments.
+If its third argument is specified, twalk applies it to [ctx' tree']
+and returns its result instead.
+
+If you are interested only either ctx or node, you can give
+a utility function to extract it as the third argument to twalk.
+Use `twalk/result-ctx` or `twalk/result-node` according to
+which value you need.
+
+For examples, see Example 6 and Example 7.
+
 ## Examples
 
 In the following examples, we use sample-tree defined as follows:
@@ -179,10 +195,9 @@ the inserted node is also to be visited.
                                ctx)]
                          [ctx node])),
                 :post (fn [ctx node]
-                        [ctx (update-node-name ctx node)]))
+                        [ctx (update-node-name ctx node)]))]
 
-          [ctx' tree'] (twalk ctx sample-tree)]
-      tree')
+      (twalk ctx sample-tree twalk/return-node))
     ===> {:name "a",
 	      :elements ({:name "b",
 		              :elements ({:name "C"}
@@ -199,9 +214,8 @@ the inserted node is also to be visited.
                          [ctx node]))
                 :post (fn [ctx node]
                         [(update-in ctx [:log] #(conj % (:name node)))
-                         node]))
-          [ctx' tree'] (twalk ctx sample-tree)]
-      (:log ctx'))
+                         node]))]
+      (:log (twalk ctx sample-tree twalk/return-ctx)))
     ===> ["b" "e" "a"]
 
 ## License

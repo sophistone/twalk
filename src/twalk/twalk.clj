@@ -143,6 +143,14 @@ and returns its result instead."
   ([ctx node k]
      (trampoline twalk-1 ctx node k)))
 
+(defn return-ctx "Returns ctx.
+This function is intended to be used as the third argument of twalk."
+  [[ctx node]] ctx)
+
+(defn return-node "Returns node.
+This function is intended to be used as the third argument of twalk."
+  [[ctx node]] node)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Naïve implementation of a general purpose tree visitor.
