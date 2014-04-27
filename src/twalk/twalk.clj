@@ -82,7 +82,10 @@ on the current node."
     (k ctx node)))
 
 (defn- twalk-1 [ctx node k]
-  (let [[ctx node] ((:pre ctx) ctx node)
+  (let [visit (fn [sym ctx node]
+                ((or (sym ctx) vector) ctx node))
+
+        [ctx node] (visit :pre ctx node)
         push-data (::push ctx)
         skip-data (::skip ctx)
 
@@ -90,7 +93,7 @@ on the current node."
         skip-children? (and skip-data (:skip-children skip-data))
         apply-post (if skip-post?
                      (fn [ctx node] [ctx node])
-                     (fn [ctx node] ((:post ctx) ctx node)))
+                     (fn [ctx node] (visit :post ctx node)))
 
         pop-before-post? (and push-data (:pop-before-post push-data))
         pop (fn [ctx] (pop-ctx ctx push-data))
