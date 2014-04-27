@@ -19,12 +19,25 @@
 (defn- keys-difference "Returns keys which m1 has but m2 doesn't." [m1 m2]
   (set/difference (keyset m1) (keyset m2)))
 
+(defn skip "Returns ctx with annotation to skip processing children."
+  [ctx]
+  (assoc-in ctx [::skip :skip-children] true))
+
+(defn skip-post "Returns ctx with annotation to skip post function on the current node."
+  [ctx]
+  (assoc-in ctx [::skip :skip-post] true))
+
+(defn skip* "Returns ctx with annotation to skip processing children and
+applying post function to the current node."
+  [ctx]
+  (-> ctx skip skip-post))
+
 (defn push "Returns ctx merged with change.
 This change is automatically reverted before execution of :post function
 on the current node."
  [ctx change]
-  {:pre [(not (has-push? ctx))]
-   :post [(has-push? %)]}
+  {:pre [(not (contains? ctx ::push))]
+   :post [(contains? % ::push)]}
   (let [modified-keys (keys-intersection ctx change)
         temp-added-keys (keys-difference change ctx)
         saved (select-keys ctx modified-keys)
@@ -69,26 +82,37 @@ on the current node."
     (k ctx node)))
 
 (defn- twalk-1 [ctx node k]
-  (let [[ctx node] ((:pre ctx) ctx node)]
-    (if (has-push? ctx)
-      (let [push-data (::push ctx)
-            pop-before-post? (:pop-before-post push-data)
-            pop (fn [ctx] (pop-ctx ctx push-data))
-            ctx (dissoc ctx ::push)]
+  (let [[ctx node] ((:pre ctx) ctx node)
+        push-data (::push ctx)
+        skip-data (::skip ctx)
 
-        (if pop-before-post?
-          (twalk-dig ctx node
-                     (fn [ctx node]
-                       #(k ((:post ctx) (pop ctx) node))))
+        skip-post? (and skip-data (:skip-post skip-data))
+        skip-children? (and skip-data (:skip-children skip-data))
+        apply-post (if skip-post?
+                     (fn [ctx node] [ctx node])
+                     (fn [ctx node] ((:post ctx) ctx node)))
 
-          (twalk-dig ctx node
-                     (fn [ctx node]
-                       (let [[ctx node] ((:post ctx) ctx node)]
-                         #(k [(pop ctx) node]))))))
+        pop-before-post? (and push-data (:pop-before-post push-data))
+        pop (fn [ctx] (pop-ctx ctx push-data))
+        apply-post-2 (cond
+                      (not push-data)
+                      apply-post
 
+                      pop-before-post?
+                      (fn [ctx node] (apply-post (pop ctx) node))
+
+                      :else
+                      (fn [ctx node]
+                        (let [[ctx node] (apply-post ctx node)]
+                          [(pop ctx) node])))
+        
+        ctx (dissoc ctx ::push ::skip)]
+
+    (if skip-children?
+      (k (apply-post-2 ctx node))
       (twalk-dig ctx node
                  (fn [ctx node]
-                   #(k ((:post ctx) ctx node)))))))
+                   #(k (apply-post-2 ctx node)))))))
 
 (defn twalk "Iterates over a tree.
 You can use this function to manipulate nodes and/or 

@@ -184,3 +184,49 @@
           [ctx' tree'] (twalk ctx sample-tree)]
 
       (is (= expected-tree tree')))))
+
+(deftest skip-test
+  (testing "Skip nodes under a certain node"
+    (let [ctx (assoc ctx-base
+                :log []
+                :pre (fn [ctx node]
+                       (if (= "b" (:name node))
+                         [(skip ctx) node]
+                         [ctx node]))
+                :post (fn [ctx node]
+                        [(update-in ctx [:log] #(conj % (:name node)))
+                         node]))
+
+          [ctx' tree'] (twalk ctx sample-tree)]
+
+      (is (= ["b", "e", "a"] (:log ctx')))))
+
+  (testing "Skip nodes under a certain node and post function on it"
+    (let [ctx (assoc ctx-base
+                :log []
+                :pre (fn [ctx node]
+                       (if (= "b" (:name node))
+                         [(skip* ctx) node]
+                         [ctx node]))
+                :post (fn [ctx node]
+                        [(update-in ctx [:log] #(conj % (:name node)))
+                         node]))
+
+          [ctx' tree'] (twalk ctx sample-tree)]
+
+      (is (= ["e", "a"] (:log ctx')))))
+
+  (testing "Skip post function on a certain node"
+    (let [ctx (assoc ctx-base
+                :log []
+                :pre (fn [ctx node]
+                       (if (get #{"a" "b"} (:name node))
+                         [(skip-post ctx) node]
+                         [ctx node]))
+                :post (fn [ctx node]
+                        [(update-in ctx [:log] #(conj % (:name node)))
+                         node]))
+
+          [ctx' tree'] (twalk ctx sample-tree)]
+
+      (is (= ["c" "d" "e"] (:log ctx'))))))
