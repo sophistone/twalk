@@ -230,3 +230,22 @@
           [ctx' tree'] (twalk ctx sample-tree)]
 
       (is (= ["c" "d" "e"] (:log ctx'))))))
+
+(deftest nil-for-pre-or-post-test
+  (testing ":pre is nil"
+    (let [ctx (assoc ctx-base
+                :n 0
+                :pre nil
+                :post (fn [ctx node]
+                        [(update-in ctx [:n] inc) node]))
+          [ctx' tree'] (twalk ctx sample-tree)]
+      (is (= 5 (:n ctx')))))
+
+  (testing ":post is nil"
+    (let [ctx (assoc ctx-base
+                :n 0
+                :pre (fn [ctx node]
+                       [(update-in ctx [:n] inc) node])
+                :post nil)
+          [ctx' tree'] (twalk ctx sample-tree)]
+      (is (= 5 (:n ctx'))))))

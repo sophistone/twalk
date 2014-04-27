@@ -42,8 +42,8 @@ You have to define several functions in a context as follows:
  * `:branch?`, a predicate which, given a node, returns true if it can have children.
  * `:children`, a function which, given a node, returns a seq of its children.
  * `:make-node`, a fuction which, given a node and new children, returns new node.
- * `:pre`, a function which, given a context and a node, returns a vector of new context and new node.
- * `:post`, a function which, given a context and a node, returns a vector of new context and new node.
+ * `:pre`, a function which, given a context and a node, returns a vector of new context and new node. If nil, `(fn [ctx node] [ctx node])` is used.
+ * `:post`, a function which, given a context and a node, returns a vector of new context and new node. If nil, `(fn [ctx node] [ctx node])` is used.
 
 Twalk applies `:pre` function on each node in pre-order, and `:post` function in post-order.
 
@@ -91,10 +91,7 @@ And we define the common part of context:
     (def ctx-base
 	  {:branch? :elements,
 	   :children :elements,
-	   :make-node (fn [node children] (assoc node :elements children)),
-	   
-	   :pre (fn [ctx node] [ctx node]),
-	   :post (fn [ctx node] [ctx node])})
+	   :make-node (fn [node children] (assoc node :elements children))})
 
 ### Example 1. Count nodes
 
