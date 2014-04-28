@@ -41,13 +41,11 @@ You have to define several functions in a context as follows:
 
  * `:branch?`, a predicate which, given a node, returns true if it can have children.
  * `:children`, a function which, given a node, returns a seq of its children.
- * `:make-node`, a fuction which, given a node and new children, returns new node.
+ * `:make-node`, a fuction which, given a node and new children, returns new node. If nil, nodes won't be mutated: changes to nodes will be discarded.
  * `:pre`, a function which, given a context and a node, returns a vector of new context and new node. If nil, `(fn [ctx node] [ctx node])` is used.
  * `:post`, a function which, given a context and a node, returns a vector of new context and new node. If nil, `(fn [ctx node] [ctx node])` is used.
 
 Twalk applies `:pre` function on each node in pre-order, and `:post` function in post-order.
-
-If the operation will not change a tree at all, `:make-node` can simply return the given node instead of replicating it. i.e., `(fn [node _] node)` is enough in such cases.
 
 You can also specify those functions as arguments to twalk instead of mappings in ctx: 
 

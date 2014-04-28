@@ -125,10 +125,14 @@ You need to specify several functions as follows:
    possibly updated children.
  * pre, a pre-order function to be called on each node.
    It receives ctx and node and returns [ctx' node'].
-   A typical no-op function for it is (fn [ctx node] [ctx node]).
  * post, a post-order function to be called on each node
    It receives ctx and node and returns [ctx' node'].
-   A typical no-op function for it is (fn [ctx node] [ctx node]).
+
+Make-node, pre and post can be nil:
+If you are not interested in mutating a tree, you can pass nil for
+make-node to cut cost of mutating.
+If you don't need pre-order or post-order operation,
+you can pass nil for pre or post.
 
 You can give them by two ways: give as arguments to twalk or
 as mappings from keys :branch?, :children, :make-node,
@@ -150,7 +154,9 @@ and returns its result instead."
      (assert (map? ctx) "ctx must be a map")
      (let [nop (fn [ctx node] [ctx node])
            pre (or pre nop)
-           post (or post nop)]
+           post (or post nop)
+           k (if make-node k (fn [[ctx _]] (k [ctx node])))
+           make-node (or make-node (fn [node _] node))]
        (twalk-1 branch? children make-node pre post ctx node k)))
   ([ctx node]
      (twalk ctx node identity))

@@ -264,3 +264,20 @@
     (is (= sample-tree
            (twalk ctx sample-tree return-node)))))
 
+(deftest nil-for-make-node-test
+  (testing "Accept nil for make-node"
+    (let [ctx (assoc ctx-base
+                    :n 0
+                    :make-node nil
+                    :pre (fn [ctx node]
+                           [(update-in ctx [:n] inc) node]))]
+    (is (= 5 (:n (twalk ctx sample-tree return-ctx))))))
+  
+  (testing "Discard changes to the tree if make-node is nil"
+    (let [ctx (assoc ctx-base
+                :make-node nil
+                :pre (fn [ctx node]
+                       [ctx (assoc node :pre true)])
+                :post (fn [ctx node]
+                        [ctx (assoc node :post true)]))]
+      (is (identical? sample-tree (twalk ctx sample-tree return-node))))))
