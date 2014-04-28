@@ -7,9 +7,6 @@
 
 (declare twalk-1)
 
-(defn- has-push? [ctx]
-  (contains? ctx ::push))
-
 (defn- keyset [m]
   (set (keys m)))
 
