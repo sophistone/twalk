@@ -49,6 +49,10 @@ Twalk applies `:pre` function on each node in pre-order, and `:post` function in
 
 If the operation will not change a tree at all, `:make-node` can simply return the given node instead of replicating it. i.e., `(fn [node _] node)` is enough in such cases.
 
+You can also specify those functions as arguments to twalk instead of mappings in ctx: 
+
+    (twalk branch? children make-node pre post ctx node)
+
 ### Process subtree with temporalily changed context
 
 You can change context only on children and descendants of a certan node.
