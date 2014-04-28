@@ -61,87 +61,106 @@ on the current node."
         saved  (:saved-entries push-data)]
     (apply dissoc (merge ctx saved) temp-added-keys)))
 
-(defn- twalk-list [ctx nodes k]
-  (if (empty? nodes)
-    (k ctx ())
+(defn- twalk-1 [branch? children make-node pre-fn post-fn ctx node k]
+  (letfn
+      [(twalk-list [ctx nodes k]
+         (if (empty? nodes)
+           (k ctx ())
 
-    #(twalk-1 ctx (first nodes)
-              (fn [[ctx x]]
-                (fn [] (twalk-list ctx (rest nodes)
-                                   (fn [ctx xs]
-                                     (fn [] (k ctx (cons x xs))))))))))
+           #(twalk-2 ctx (first nodes)
+                     (fn [[ctx x]]
+                       (fn []
+                         (twalk-list ctx (rest nodes)
+                                     (fn [ctx xs]
+                                       (fn [] (k ctx (cons x xs))))))))))
 
-(defn- twalk-dig [ctx node k]
-  (if-let [children (and ((:branch? ctx) node)
-                         (seq ((:children ctx) node)))]
+       (twalk-dig [ctx node k]
+         (if-let [cs (and (branch? node)
+                          (seq (children node)))]
+           (twalk-list ctx cs
+                       (fn [ctx cs]
+                         #(k ctx (make-node node cs))))
+           (k ctx node)))
 
-    (twalk-list ctx children
-                (fn [ctx children]
-                  #(k ctx ((:make-node ctx) node children))))
+       (twalk-2 [ctx node k]
+         (let [[ctx node] (pre-fn ctx node)
+               push-data (::push ctx)
+               skip-data (::skip ctx)
 
-    (k ctx node)))
+               skip-post? (and skip-data (:skip-post skip-data))
+               skip-children? (and skip-data (:skip-children skip-data))
+               apply-post (if skip-post?
+                            (fn [ctx node] [ctx node])
+                            post-fn)
 
-(defn- twalk-1 [ctx node k]
-  (let [visit (fn [sym ctx node]
-                ((or (sym ctx) vector) ctx node))
+               pop-before-post? (and push-data (:pop-before-post push-data))
+               pop (fn [ctx] (pop-ctx ctx push-data))
+               apply-post-2 (cond
+                             (not push-data)
+                             apply-post
 
-        [ctx node] (visit :pre ctx node)
-        push-data (::push ctx)
-        skip-data (::skip ctx)
+                             pop-before-post?
+                             (fn [ctx node] (apply-post (pop ctx) node))
 
-        skip-post? (and skip-data (:skip-post skip-data))
-        skip-children? (and skip-data (:skip-children skip-data))
-        apply-post (if skip-post?
-                     (fn [ctx node] [ctx node])
-                     (fn [ctx node] (visit :post ctx node)))
+                             :else
+                             (fn [ctx node]
+                               (let [[ctx node] (apply-post ctx node)]
+                                 [(pop ctx) node])))
+               
+               ctx (dissoc ctx ::push ::skip)]
 
-        pop-before-post? (and push-data (:pop-before-post push-data))
-        pop (fn [ctx] (pop-ctx ctx push-data))
-        apply-post-2 (cond
-                      (not push-data)
-                      apply-post
+           (if skip-children?
+             (k (apply-post-2 ctx node))
+             (twalk-dig ctx node
+                        (fn [ctx node]
+                          #(k (apply-post-2 ctx node)))))))]
 
-                      pop-before-post?
-                      (fn [ctx node] (apply-post (pop ctx) node))
-
-                      :else
-                      (fn [ctx node]
-                        (let [[ctx node] (apply-post ctx node)]
-                          [(pop ctx) node])))
-        
-        ctx (dissoc ctx ::push ::skip)]
-
-    (if skip-children?
-      (k (apply-post-2 ctx node))
-      (twalk-dig ctx node
-                 (fn [ctx node]
-                   #(k (apply-post-2 ctx node)))))))
+    (trampoline twalk-2 ctx node k)))
 
 (defn twalk "Iterates over a tree.
 You can use this function to manipulate nodes and/or 
 to accumulate information.
 
-You must let ctx have several functions as follows:
- * :branch?, a predicate to tell whether a node has children or not.
- * :children, a function which returns a seq of child nodes of a node.
- * :make-node, a constructor which creates new node from old one and
+You need to specify several functions as follows:
+ * branch?, a predicate to tell whether a node has children or not.
+ * children, a function which returns a seq of child nodes of a node.
+ * make-node, a constructor which creates new node from old one and
    possibly updated children.
- * :pre, a pre-order function to be called on each node.
+ * pre, a pre-order function to be called on each node.
    It receives ctx and node and returns [ctx' node'].
    A typical no-op function for it is (fn [ctx node] [ctx node]).
- * :post, a post-order function to be called on each node
+ * post, a post-order function to be called on each node
    It receives ctx and node and returns [ctx' node'].
    A typical no-op function for it is (fn [ctx node] [ctx node]).
 
-Ctx can carry any arbitrary data along with them.
+You can give them by two ways: give as arguments to twalk or
+as mappings from keys :branch?, :children, :make-node,
+:pre, and :post in ctx.
+
+In the latter way, twalk captures functions at first
+and keep using them.
+Changing their mappings in ctx during traversal will have no effect.
+
+Ctx can carry any arbitrary data.
+However, keys of keywords in namespace twalk are reserved for internal use.
 
 This function returns a vector [new-ctx new-node].
 If k is supplied, evaluates (k [new-ctx new-node])
 and returns its result instead."
+  ([branch? children make-node pre post ctx node]
+     (twalk branch? children make-node pre post ctx node identity))
+  ([branch? children make-node pre post ctx node k]
+     (assert (map? ctx) "ctx must be a map")
+     (let [nop (fn [ctx node] [ctx node])
+           pre (or pre nop)
+           post (or post nop)]
+       (twalk-1 branch? children make-node pre post ctx node k)))
   ([ctx node]
-     (trampoline twalk-1 ctx node identity))
+     (twalk ctx node identity))
   ([ctx node k]
-     (trampoline twalk-1 ctx node k)))
+     (twalk (:branch? ctx) (:children ctx) (:make-node ctx)
+            (:pre ctx) (:post ctx)
+            ctx node k)))
 
 (defn return-ctx "Returns ctx.
 This function is intended to be used as the third argument of twalk."
